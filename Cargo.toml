@@ -1,0 +1,8 @@
+[package]
+name = "bar"
+version = "0.1.0"
+authors = ["Sheheryar Parvaz <skipper308@hotmail.ca>"]
+
+[dependencies]
+cairo-rs = { version = "^0", features = ["png", "xcb"] }
+xcb = "^0"
