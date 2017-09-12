@@ -4,5 +4,6 @@ version = "0.1.0"
 authors = ["Sheheryar Parvaz <skipper308@hotmail.ca>"]
 
 [dependencies]
+cairo-sys-rs = "^0"
 cairo-rs = { version = "^0", features = ["png", "xcb"] }
 xcb = "^0"
