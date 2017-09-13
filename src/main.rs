@@ -27,8 +27,8 @@ fn main() {
     let win = conn.generate_id();
 
     let values = [
-        //(xcb::CW_BACK_PIXEL, screen.white_pixel()),
-        (xcb::CW_OVERRIDE_REDIRECT, 1),
+        (xcb::CW_BACK_PIXEL, screen.black_pixel()),
+        //(xcb::CW_OVERRIDE_REDIRECT, 1),
         (xcb::CW_EVENT_MASK, xcb::EVENT_MASK_EXPOSURE | xcb::EVENT_MASK_KEY_PRESS),
     ];
 
@@ -45,6 +45,20 @@ fn main() {
                        &values);
 
     xcb::map_window(&conn, win);
+
+    let window_type = xcb::intern_atom(&conn, false, "_NET_WM_WINDOW_TYPE");
+    let window_type_dock = xcb::intern_atom(&conn, false, "_NET_WM_WINDOW_TYPE_DOCK");
+    let type_dock = window_type_dock.get_reply().unwrap().atom();
+    let data = [
+        type_dock,
+    ];
+    xcb::change_property(&conn,
+                         xcb::PROP_MODE_REPLACE as u8,
+                         win,
+                         window_type.get_reply().unwrap().atom(),
+                         xcb::ATOM_ATOM,
+                         32,
+                         &data);
 
     // Prepare cairo surface
     let cr_conn = unsafe {
@@ -71,7 +85,6 @@ fn main() {
 
 
     // Set up loop
-    conn.flush();
     loop {
         conn.flush();
 

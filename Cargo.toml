@@ -5,5 +5,5 @@ authors = ["Sheheryar Parvaz <skipper308@hotmail.ca>"]
 
 [dependencies]
 cairo-sys-rs = "^0"
-cairo-rs = { version = "^0", features = ["png", "xcb"] }
+cairo-rs = { version = "^0", features = ["xcb"] }
 xcb = "^0"
