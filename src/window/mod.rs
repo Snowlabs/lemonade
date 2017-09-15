@@ -7,7 +7,7 @@ use cairo::XCBSurface;
 pub trait Dock {
     fn create_surface(&self) -> cairo::Surface;
     fn dock(&self);
-    fn set_size(&mut self, u16, u16);
+    fn size(&mut self, u16, u16);
     //fn set_pos(&self, i16, i16);
     //fn show();
     //fn set_offset();
@@ -39,28 +39,35 @@ impl XCB {
             pos,
         };
 
-        // Use the previous struct and create the window
-        let values = [
-            (xcb::CW_EVENT_MASK, xcb::EVENT_MASK_KEY_PRESS | xcb::EVENT_MASK_EXPOSURE),
-        ];
-
-        xcb::create_window(&x.conn,
-                           xcb::COPY_FROM_PARENT as u8,
-                           x.win,
-                           x.get_screen().root(),
-                           x.pos.0, x.pos.1,
-                           x.size.0, x.size.1,
-                           0,
-                           xcb::WINDOW_CLASS_INPUT_OUTPUT as u16,
-                           x.get_screen().root_visual(),
-                           &values);
-
-        xcb::map_window(&x.conn, x.win);
+        // Create the window
+        // Necessary?
+        x.create_win();
 
         return x;
     }
 
-    // TODO handle Result<>
+    fn create_win(&self) {
+
+        // Masks to use
+        let values = [
+            (xcb::CW_EVENT_MASK, xcb::EVENT_MASK_EXPOSURE),
+        ];
+
+        xcb::create_window(&self.conn,
+                           xcb::COPY_FROM_PARENT as u8,
+                           self.win,
+                           self.get_screen().root(),
+                           self.pos.0, self.pos.1,
+                           self.size.0, self.size.1,
+                           0,
+                           xcb::WINDOW_CLASS_INPUT_OUTPUT as u16,
+                           self.get_screen().root_visual(),
+                           &values);
+
+        xcb::map_window(&self.conn, self.win);
+    }
+
+    // TODO handle Result<> instead of unwrap()
     fn get_atom(&self, name: &str) -> xcb::Atom {
         let atom = xcb::intern_atom(&self.conn, false, name);
 
@@ -68,8 +75,8 @@ impl XCB {
         return reply;
     }
 
-    // TODO somehow store this value in the struct
-    // generates lifetime errors for now
+    // TODO somehow store this value in the struct instead of
+    // getting it through a function
     fn get_screen(&self) -> xcb::Screen {
         let setup = self.conn.get_setup();
         let screen = setup.roots().nth(self.screen_num as usize).unwrap();
@@ -128,7 +135,7 @@ impl Dock for XCB {
                              &data);
     }
 
-    fn set_size(&mut self, w: u16, h: u16) {
+    fn size(&mut self, w: u16, h: u16) {
         xcb::configure_window(&self.conn, self.win, &[
                 (xcb::CONFIG_WINDOW_WIDTH as u16, w as u32),
                 (xcb::CONFIG_WINDOW_HEIGHT as u16, h as u32),

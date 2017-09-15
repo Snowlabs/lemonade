@@ -11,7 +11,7 @@ fn main() {
     let mut xcb = window::XCB::new();
     xcb.dock();
 
-    xcb.set_size(100, 100);
+    xcb.size(100, 100);
 
     let surface = xcb.create_surface();
     let cr = cairo::Context::new(&surface);
