@@ -2,93 +2,26 @@ extern crate cairo_sys;
 extern crate cairo;
 extern crate xcb;
 
-use cairo::XCBSurface;
+mod window;
 
-fn get_visual_type(conn: &xcb::Connection, scr: &xcb::Screen) -> xcb::Visualtype {
-    for root in conn.get_setup().roots() {
-        for d in root.allowed_depths() {
-            for v in d.visuals() {
-                if v.visual_id() == scr.root_visual() {
-                    return v;
-                }
-            }
-        }
-    }
-    panic!("Failed to find visual type");
-}
+use window::Dock;
 
 fn main() {
 
-    // Prepare XCB Window
-    let (conn, scr_num) = xcb::Connection::connect(None).unwrap();
-    let setup = conn.get_setup();
-    let screen = setup.roots().nth(scr_num as usize).unwrap();
+    let mut xcb = window::XCB::new();
+    xcb.dock();
 
-    let win = conn.generate_id();
+    xcb.set_size(100, 100);
 
-    let values = [
-        (xcb::CW_BACK_PIXEL, screen.black_pixel()),
-        //(xcb::CW_OVERRIDE_REDIRECT, 1),
-        (xcb::CW_EVENT_MASK, xcb::EVENT_MASK_EXPOSURE | xcb::EVENT_MASK_KEY_PRESS),
-    ];
-
-
-    xcb::create_window(&conn,
-                       xcb::COPY_FROM_PARENT as u8,
-                       win,
-                       screen.root(),
-                       50, 50,
-                       100, 100,
-                       0,
-                       xcb::WINDOW_CLASS_INPUT_OUTPUT as u16,
-                       screen.root_visual(),
-                       &values);
-
-    xcb::map_window(&conn, win);
-
-    let window_type = xcb::intern_atom(&conn, false, "_NET_WM_WINDOW_TYPE");
-    let window_type_dock = xcb::intern_atom(&conn, false, "_NET_WM_WINDOW_TYPE_DOCK");
-    let type_dock = window_type_dock.get_reply().unwrap().atom();
-    let data = [
-        type_dock,
-    ];
-    xcb::change_property(&conn,
-                         xcb::PROP_MODE_REPLACE as u8,
-                         win,
-                         window_type.get_reply().unwrap().atom(),
-                         xcb::ATOM_ATOM,
-                         32,
-                         &data);
-
-    // Prepare cairo surface
-    let cr_conn = unsafe {
-        cairo::XCBConnection::from_raw_none(
-            conn.get_raw_conn() as *mut cairo_sys::xcb_connection_t
-        )
-    };
-
-    let cr_visual = unsafe {
-        cairo::XCBVisualType::from_raw_none(
-            &mut get_visual_type(&conn, &screen).base
-                as *mut xcb::ffi::xcb_visualtype_t
-                as *mut cairo_sys::xcb_visualtype_t
-        )
-    };
-
-    let cr_draw = cairo::XCBDrawable(win);
-
-    // Crate cairo surface
-    let surface = cairo::Surface::create(
-            &cr_conn, &cr_draw, &cr_visual,
-            100, 100);
+    let surface = xcb.create_surface();
     let cr = cairo::Context::new(&surface);
 
-
     // Set up loop
+    // TODO abstract this functionality
     loop {
-        conn.flush();
+        xcb.conn.flush();
 
-        let e = conn.wait_for_event();
+        let e = xcb.conn.wait_for_event();
         match e {
             None => { break; }
             Some(event) => {
