@@ -1,49 +1,21 @@
-extern crate cairo_sys;
-extern crate cairo;
-extern crate xcb;
+extern crate bar;
 
-mod window;
-
-use window::Dock;
+use bar::Bar;
+use std::io;
 
 fn main() {
 
-    let mut xcb = window::XCB::new();
-    xcb.dock();
+    let mut bar = Bar::new_xcb();
+    bar.size(1920, 30);
 
-    xcb.size(100, 100);
-
-    let surface = xcb.create_surface();
-    let cr = cairo::Context::new(&surface);
-
-    // Set up loop
-    // TODO abstract this functionality
+    let mut buf = String::new();
     loop {
-        xcb.conn.flush();
+        buf.clear();
 
-        let e = xcb.conn.wait_for_event();
-        match e {
-            None => { break; }
-            Some(event) => {
-                match event.response_type() {
-
-                    xcb::KEY_PRESS | xcb::EXPOSE => {
-                        cr.set_source_rgb(1.0, 0.0, 0.0);
-                        cr.paint();
-
-                        cr.set_line_width(2.0);
-                        cr.set_source_rgb(0.0, 0.0, 0.0);
-                        cr.move_to(0.0, 0.0);
-                        cr.line_to(100.0, 100.0);
-                        cr.move_to(100.0, 0.0);
-                        cr.line_to(0.0, 100.0);
-
-                        cr.stroke();
-                    }
-
-                    _ =>  {}
-                }
-            }
+        if let Err(_) = io::stdin().read_line(&mut buf) {
+            continue;
         }
+
+        bar.draw(&buf);
     }
 }

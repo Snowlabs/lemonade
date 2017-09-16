@@ -4,6 +4,8 @@ version = "0.1.0"
 dependencies = [
  "cairo-rs 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "cairo-sys-rs 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pango 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pangocairo 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "xcb 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -89,6 +91,57 @@ version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "pango"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glib 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glib-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gobject-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pango-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "pango-sys"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glib-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gobject-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "pangocairo"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "cairo-rs 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glib 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glib-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "gobject-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pango 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pango-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pangocairo-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "pangocairo-sys"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "cairo-sys-rs 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "glib-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.30 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pango-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "pkg-config"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -118,6 +171,10 @@ dependencies = [
 "checksum lazy_static 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "3b37545ab726dd833ec6420aaba8231c5b320814b9029ad585555d2a03e94fbf"
 "checksum libc 0.2.30 (registry+https://github.com/rust-lang/crates.io-index)" = "2370ca07ec338939e356443dac2296f581453c35fe1e3a3ed06023c49435f915"
 "checksum log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "880f77541efa6e5cc74e76910c9884d9859683118839d6a1dc3b11e63512565b"
+"checksum pango 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5afa4b4c5380315b12075e7767d9bdd62d53beeb6087d9287ef6990e57a6b643"
+"checksum pango-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e6ec8d90306b5ff43f5836f4363267ea95be02b3df71d2b31ba8fbb1680bdee1"
+"checksum pangocairo 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c8edeb86f36f8f10a252a888fa3d9aff4d0681373da918c207eac2208aa091e6"
+"checksum pangocairo-sys 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c26c200ef32a682bf8b693b47996c3c33e0b2de32b30f7251cc60673ad513bef"
 "checksum pkg-config 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)" = "3a8b4c6b8165cd1a1cd4b9b120978131389f64bdaf456435caa41e630edba903"
 "checksum winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "167dc9d6949a9b857f3451275e911c3f44255842c1f7a76f33c55103a909087a"
 "checksum xcb 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "400cebeaedeca931825f11606874080f18aa51370dd3d7e11bc08d5aac8b3142"

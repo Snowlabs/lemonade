@@ -8,9 +8,9 @@ pub trait Dock {
     fn create_surface(&self) -> cairo::Surface;
     fn dock(&self);
     fn size(&mut self, u16, u16);
-    //fn set_pos(&self, i16, i16);
-    //fn show();
-    //fn set_offset();
+    fn flush(&self);
+    //fn draw_cb(&mut self, Fn());
+    // fn click_cb(&self, &Fn(u16, u16));
 }
 
 pub struct XCB {
@@ -50,7 +50,8 @@ impl XCB {
 
         // Masks to use
         let values = [
-            (xcb::CW_EVENT_MASK, xcb::EVENT_MASK_EXPOSURE),
+            (xcb::CW_EVENT_MASK, xcb::EVENT_MASK_BUTTON_PRESS
+                                |xcb::EVENT_MASK_EXPOSURE),
         ];
 
         xcb::create_window(&self.conn,
@@ -67,7 +68,6 @@ impl XCB {
         xcb::map_window(&self.conn, self.win);
     }
 
-    // TODO handle Result<> instead of unwrap()
     fn get_atom(&self, name: &str) -> xcb::Atom {
         let atom = xcb::intern_atom(&self.conn, false, name);
 
@@ -142,5 +142,9 @@ impl Dock for XCB {
         ]);
 
         self.size = (w, h);
+    }
+
+    fn flush(&self) {
+        self.conn.flush();
     }
 }
