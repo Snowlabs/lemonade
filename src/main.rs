@@ -1,7 +1,7 @@
-extern crate bar;
+extern crate lemonade;
 
-use bar::Bar;
-use bar::format::{Format, FormatItem, Text, Color};
+use lemonade::Bar;
+use lemonade::format::{Format, FormatItem, Text, Color};
 use std::io;
 use std::thread;
 use std::time;

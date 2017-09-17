@@ -1,5 +1,5 @@
 [root]
-name = "bar"
+name = "lemonade"
 version = "0.1.0"
 dependencies = [
  "cairo-rs 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
