@@ -1,19 +1,18 @@
 use cairo;
 use pango;
-use pangocairo;
+
+use format;
+use window;
+use window::Dock;
 
 use cairo::XCBSurface;
 use pango::LayoutExt;
 use pangocairo::CairoContextExt;
 
-use window;
-use window::Dock;
-
 pub struct Bar<T> {
     pub window: T,
 
     pub surface: cairo::Surface,
-    pub cr: cairo::Context,
     pub font: pango::FontDescription,
     pub layout: pango::Layout,
 
@@ -22,13 +21,13 @@ pub struct Bar<T> {
 
 impl Bar<window::XCB> {
     pub fn new_xcb() -> Bar<window::XCB> {
-        let mut window = window::XCB::new();
+        let window = window::XCB::new();
         window.dock();
 
         let surface =  window.create_surface();
         let cr = cairo::Context::new(&surface);
 
-        //let font = pango::FontDescription::new();
+        //let font = pango::FontDescription::new(); // TODO: un-hardcode
         let font = pango::FontDescription::from_string("Noto Sans 15");
         let layout = cr.create_pango_layout();
         layout.set_font_description(&font);
@@ -38,7 +37,7 @@ impl Bar<window::XCB> {
         let mut r = Bar {
             window,
             surface,
-            cr,
+            //cr,
             font,
             layout,
             size,
@@ -58,24 +57,76 @@ impl<T: Dock> Bar<T> {
         self.surface.set_size(w, h);
     }
 
-    // TODO: str will be replaced with a better implementation
-    // TODO: most code is here is temporary
-    pub fn draw(&self, input: &str) {
-        let cr = &self.cr;
+    pub fn draw(&self, input: &format::Format) {
+        let cr = cairo::Context::new(&self.surface);
+        let (bw, bh) = self.size;
+
+        // Format vectors for each area
+        let lfmt = &input.left;
+        let cfmt = &input.center;
+        let rfmt = &input.right;
+
+        // Length for each format vector
+        // Used for translating the right amount
+        let lpos = self.get_format_length(&lfmt);
+        let cpos = self.get_format_length(&cfmt);
+        let rpos = self.get_format_length(&rfmt);
 
         cr.set_source_rgb(0.0, 0.0, 0.0);
         cr.paint();
 
-        self.layout.set_text(&input);
-        let (_, bound) = self.layout.get_pixel_extents();
-        cr.set_source_rgb(0.5, 0.5, 0.5);
-        cr.rectangle(bound.x as f64, 0.0,
-                     bound.width as f64, self.size.1 as f64);
-        cr.fill();
+        // Paint from left
+        self.format_to_cr(&lfmt, &cr); // Moves the cursor
 
-        cr.set_source_rgb(1.0, 1.0, 1.0);
-        cr.show_pango_layout(&self.layout);
+        cr.translate((bw as f64 / 2.0) - (lpos + cpos / 2.0), 0.0);
+        self.format_to_cr(&cfmt, &cr); // Moves the cursor
+
+        cr.translate((bw as f64 / 2.0) - (rpos + cpos / 2.0), 0.0);
+        self.format_to_cr(&rfmt, &cr);
 
         self.window.flush();
+    }
+
+    fn format_to_cr(&self, v: &Vec<format::FormatItem>, cr: &cairo::Context) {
+        let lay = &self.layout;
+        let (_, bh) = self.size; // bh := bar height
+
+        for i in v {
+            match *i {
+                format::FormatItem::Text(ref t) => {
+                    lay.set_text(&t.text);
+                    let (w, _) = lay.get_pixel_size();
+
+                    cr.set_source_rgba(t.bg.r, t.bg.g, t.bg.b, t.bg.a);
+                    cr.rectangle(0.0, 0.0,
+                                 w as f64, bh as f64);
+                    cr.fill();
+
+                    cr.set_source_rgba(t.fg.r, t.fg.g, t.fg.b, t.fg.a);
+                    cr.show_pango_layout(&lay);
+
+                    cr.translate(w as f64, 0.0);
+                }
+            }
+        }
+
+    }
+
+    fn get_format_length(&self, v: &Vec<format::FormatItem>) -> f64 {
+        let mut r: f64 = 0.0;
+        let lay = self.layout.clone();
+        lay.set_font_description(&self.font); // TODO: this will be replaced
+
+        for i in v.iter() {
+            match *i {
+                format::FormatItem::Text(ref t) => {
+                    lay.set_text(&t.text);
+                    let (w, _) = lay.get_pixel_size();
+                    r += w as f64;
+                }
+            }
+        }
+
+        return r;
     }
 }

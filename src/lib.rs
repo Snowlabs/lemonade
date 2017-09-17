@@ -5,6 +5,7 @@ extern crate pangocairo;
 extern crate xcb;
 
 pub mod bar;
+pub mod format;
 pub mod window;
 
 pub use bar::Bar;
