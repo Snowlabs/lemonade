@@ -37,7 +37,6 @@ impl Bar<window::XCB> {
         let mut r = Bar {
             window,
             surface,
-            //cr,
             font,
             layout,
             size,
@@ -57,39 +56,49 @@ impl<T: Dock> Bar<T> {
         self.surface.set_size(w, h);
     }
 
-    pub fn draw(&self, input: &format::Format) {
+    pub fn draw(&self, input: &Vec<Vec<format::FormatItem>>) {
         let cr = cairo::Context::new(&self.surface);
-        let (bw, bh) = self.size;
+        let (bw, _) = self.size;
 
-        // Format vectors for each area
-        let lfmt = &input.left;
-        let cfmt = &input.center;
-        let rfmt = &input.right;
+        let inter = bw as f64 / (input.len() - 1) as f64;
+        let mut pos = 0.0;
+        let mut pnext = 0.0;
 
-        // Length for each format vector
-        // Used for translating the right amount
-        let lpos = self.get_format_length(&lfmt);
-        let cpos = self.get_format_length(&cfmt);
-        let rpos = self.get_format_length(&rfmt);
+        for (i, v) in input.iter().enumerate() {
+            let l = self.get_format_length(&v);
+            // Compute beginning of next vec
+            match input.get(i + 2) {
+                Some(_) => {
+                    pnext = inter * (i as f64 + 1.0);
+                    pnext -= l;
+                    pnext -= self.get_format_length(&input[i + 1]) / 2.0;
+                    pnext -= pos;
+                }
 
-        cr.set_source_rgb(0.0, 0.0, 0.0);
-        cr.paint();
+                None => {
+                    pnext = bw as f64;
+                    pnext -= self.get_format_length(&v);
+                    if let Some(vn) = input.get(i + 1) {
+                        pnext -= self.get_format_length(&vn);
+                    }
+                    pnext -= pos;
+                }
+            }
 
-        // Paint from left
-        self.format_to_cr(&lfmt, &cr); // Moves the cursor
-
-        cr.translate((bw as f64 / 2.0) - (lpos + cpos / 2.0), 0.0);
-        self.format_to_cr(&cfmt, &cr); // Moves the cursor
-
-        cr.translate((bw as f64 / 2.0) - (rpos + cpos / 2.0), 0.0);
-        self.format_to_cr(&rfmt, &cr);
+            self.format_to_cr(&v, &cr, pnext);
+            pos += l;
+            pos += pnext;
+            cr.translate(pnext, 0.0);
+        }
 
         self.window.flush();
     }
 
-    fn format_to_cr(&self, v: &Vec<format::FormatItem>, cr: &cairo::Context) {
+    fn format_to_cr(&self, v: &Vec<format::FormatItem>,
+                    cr: &cairo::Context, to: f64) {
         let lay = &self.layout;
         let (_, bh) = self.size; // bh := bar height
+        let cr = cr.clone();
 
         for i in v {
             match *i {
@@ -106,6 +115,13 @@ impl<T: Dock> Bar<T> {
                     cr.show_pango_layout(&lay);
 
                     cr.translate(w as f64, 0.0);
+                }
+
+                format::FormatItem::Filler(ref t) => {
+                    cr.set_source_rgba(t.bg.r, t.bg.g, t.bg.b, t.bg.a);
+                    cr.rectangle(0.0, 0.0,
+                                 to, bh as f64);
+                    cr.fill();
                 }
             }
         }
@@ -124,6 +140,7 @@ impl<T: Dock> Bar<T> {
                     let (w, _) = lay.get_pixel_size();
                     r += w as f64;
                 }
+                _ => {}
             }
         }
 

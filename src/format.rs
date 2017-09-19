@@ -17,22 +17,12 @@ pub struct Text {
     pub text: String,
 }
 
+// Must be the last item of the vector!
+pub struct Filler {
+    pub bg: Color,
+}
+
 pub enum FormatItem {
     Text(Text),
-}
-
-pub struct Format {
-    pub left: Vec<FormatItem>,
-    pub center: Vec<FormatItem>,
-    pub right: Vec<FormatItem>,
-}
-
-impl Format {
-    pub fn new() -> Format {
-        Format {
-            left: Vec::new(),
-            center: Vec::new(),
-            right: Vec::new(),
-        }
-    }
+    Filler(Filler),
 }
