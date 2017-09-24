@@ -1,18 +1,19 @@
-pub struct Color {
+pub type Color = Colour;
+pub struct Colour {
     pub r: f64,
     pub g: f64,
     pub b: f64,
     pub a: f64,
 }
 
-impl Color {
+impl Colour {
     pub fn new(r: f64, g: f64, b: f64, a: f64) -> Self {
-        Color { r, g, b, a, }
+        Self { r, g, b, a, }
     }
 
     // Takes either: #rrggbb, #aarrggbb, #rbg, #argb
     // The '#' in front is not necessary
-    pub fn from_hex(hex: &str) -> Result<Color, &'static str>{
+    pub fn from_hex(hex: &str) -> Result<Colour, &'static str>{
         let mut s = String::from(hex);
         let mut c = [1.0, 0.0, 0.0, 0.0]; // argb
 
@@ -42,7 +43,7 @@ impl Color {
             n += 1;
         }
 
-        Ok(Color {
+        Ok(Colour {
             a: c[0],
             r: c[1],
             g: c[2],
@@ -51,9 +52,9 @@ impl Color {
     }
 }
 
-impl Clone for Color {
+impl Clone for Colour {
     fn clone(&self) -> Self {
-        Color::new(self.r, self.g, self.b, self.a)
+        Self::new(self.r, self.g, self.b, self.a)
     }
 }
 
