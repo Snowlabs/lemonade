@@ -1,4 +1,7 @@
+// Fucking fight me
 pub type Color = Colour;
+
+#[derive(Clone)]
 pub struct Colour {
     pub r: f64,
     pub g: f64,
@@ -52,19 +55,15 @@ impl Colour {
     }
 }
 
-impl Clone for Colour {
-    fn clone(&self) -> Self {
-        Self::new(self.r, self.g, self.b, self.a)
-    }
-}
-
+#[derive(Clone)]
 pub struct Text {
     pub bg: Color,
     pub fg: Color,
     pub text: String,
+    pub font: String,
 }
 
-// Must be the last item of the vector!
+#[derive(Clone)]
 pub struct Filler {
     pub bg: Color,
 }
@@ -77,6 +76,7 @@ impl Filler {
     }
 }
 
+#[derive(Clone)]
 pub enum FormatItem {
     Text(Text),
     Filler(Filler),
