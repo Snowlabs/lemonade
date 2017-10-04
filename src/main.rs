@@ -10,7 +10,7 @@ use lemonade::format::{FormatItem, Text, Filler, Color};
 
 fn main() {
 
-    let mut bar = Bar::new_xcb();
+    let mut bar = Bar::with_xcb();
     bar.size(1920, 30);
 
     let mut buf = String::new();
@@ -31,6 +31,8 @@ fn main() {
 pub struct LemonParser {
     bg: Color,
     fg: Color,
+    ol: Color,
+    ul: Color,
     re: Regex,
 }
 
@@ -39,7 +41,8 @@ impl LemonParser {
         let re = Regex::new(concat!(
             r"%\{(?P<type>",
                 "[lcr]", "|",
-                "[BF]", "#(?P<colo>(?:[[:xdigit:]]{3,4}){1,2})", "|",
+                "[BFUu]", "#(?P<colo>-|(?:[[:xdigit:]]{3,4}){1,2})", "|",
+                "[!-+\\-]", "(?P<attr>[uo])", "|",
                 "T", "(?P<index>-|[1-9])", "|",
                 "R",
             r")\}",
@@ -48,10 +51,14 @@ impl LemonParser {
 
         let bg = Color::new(1.0, 1.0, 1.0, 1.0);
         let fg = Color::new(0.0, 0.0, 0.0, 1.0);
+        let ol = bg.clone();
+        let ul = bg.clone();
 
         Self {
             bg,
             fg,
+            ol,
+            ul,
             re,
         }
     }
@@ -64,6 +71,16 @@ impl LemonParser {
         // Colour storage
         let bg = RefCell::new(self.bg.clone());
         let fg = RefCell::new(self.fg.clone());
+        let ol = RefCell::new(self.ol.clone());
+        let ul = RefCell::new(self.ul.clone());
+
+        // Attributes
+        let oline = RefCell::new(false); // overline
+        let uline = RefCell::new(false); // underline
+
+        // TODO: tmp
+        let ol_size = 2.0;
+        let ul_size = 2.0;
 
         // List of fonts and the current font
         // TODO: tmp
@@ -93,6 +110,12 @@ impl LemonParser {
             v.push(FormatItem::Text(Text {
                 bg: bg.borrow().clone(),
                 fg: fg.borrow().clone(),
+                ol: if *oline.borrow() { Some(ol.borrow().clone()) }
+                    else { None },
+                ul: if *uline.borrow() { Some(ul.borrow().clone()) }
+                    else { None },
+                ol_size,
+                ul_size,
                 text: String::from(s),
                 font: font.borrow().clone(),
             }));
@@ -105,6 +128,12 @@ impl LemonParser {
             } else {
                 v.push(FormatItem::Filler(Filler {
                     bg: bg.borrow().clone(),
+                    ol: if *oline.borrow() { Some(ol.borrow().clone()) }
+                        else { None },
+                    ul: if *uline.borrow() { Some(ul.borrow().clone()) }
+                        else { None },
+                    ol_size,
+                    ul_size,
                 }));
             }
         };
@@ -123,34 +152,42 @@ impl LemonParser {
 
             pusht(&mut v[i], &fmt[bpos..epos]);
 
-            match *&caps["type"].chars().nth(0).unwrap() {
-                'l' => {
-                    if i != 0 {
+            let t = *&caps["type"].chars().nth(0).unwrap();
+            match t {
+                'l'|'c'|'r' => {
+                    let n = match t {
+                        'l' => 0,
+                        'c' => 1,
+                        'r' => 2,
+                        _ => 0,
+                    };
+
+                    if i != n {
                         pushf(&mut v[i]);
-                        i = 0;
+                        i = n;
                     }
                 }
 
-                'c' => {
-                    if i != 1 {
-                        pushf(&mut v[i]);
-                        i = 1;
+                'R' => {
+                    swapc();
+                }
+
+                // TODO: implement overline
+                'F'|'B'|'U'|'u' => {
+                    let def;
+                    let mut c = match t {
+                        'F' => { def = &self.fg; fg.borrow_mut() }
+                        'B' => { def = &self.bg; bg.borrow_mut() }
+                        'U' => { def = &self.ul; ul.borrow_mut() }
+                        'u' => { def = &self.ol; ol.borrow_mut() }
+                        _   => { panic!("") /* PLACEHOLDER */ }
+                    };
+
+                    if &caps["colo"] == "-" {
+                        *c = def.clone();
+                    } else {
+                        *c = Color::from_hex(&caps["colo"]).unwrap();
                     }
-                }
-
-                'r' => {
-                    if i != 2 {
-                        pushf(&mut v[i]);
-                        i = 2;
-                    }
-                }
-
-                'F' => {
-                    *fg.borrow_mut() = Color::from_hex(&caps["colo"]).unwrap();
-                }
-
-                'B' => {
-                    *bg.borrow_mut() = Color::from_hex(&caps["colo"]).unwrap();
                 }
 
                 'T' => {
@@ -170,8 +207,19 @@ impl LemonParser {
                     }
                 }
 
-                'R' => {
-                    swapc();
+                '!'|'+'|'-' => {
+                    let mut a = match &caps["attr"] {
+                        "o" => { oline.borrow_mut() }
+                        "u" => { uline.borrow_mut() }
+                        _   => { panic!("") }
+                    };
+
+                    *a = match t {
+                        '!' => { ! *a  }
+                        '+' => { true  }
+                        '-' => { false }
+                        _   => { panic!("") }
+                    };
                 }
 
                 _ => {}

@@ -16,7 +16,7 @@ impl Colour {
 
     // Takes either: #rrggbb, #aarrggbb, #rbg, #argb
     // The '#' in front is not necessary
-    pub fn from_hex(hex: &str) -> Result<Colour, &'static str>{
+    pub fn from_hex(hex: &str) -> Result<Self, &'static str>{
         let mut s = String::from(hex);
         let mut c = [1.0, 0.0, 0.0, 0.0]; // argb
 
@@ -27,8 +27,8 @@ impl Colour {
 
         // Make sure the length is ok, and set the multiplier
         // used when iterating.
-        let mut m: usize;
-        let mut b: usize;
+        let m: usize;
+        let b: usize;
         match s.len() {
             3 => { m = 1; b = 1 }
             4 => { m = 1; b = 0 }
@@ -46,7 +46,7 @@ impl Colour {
             n += 1;
         }
 
-        Ok(Colour {
+        Ok(Self {
             a: c[0],
             r: c[1],
             g: c[2],
@@ -57,23 +57,23 @@ impl Colour {
 
 #[derive(Clone)]
 pub struct Text {
-    pub bg: Color,
-    pub fg: Color,
+    pub bg: Colour,
+    pub fg: Colour,
+    pub ol: Option<Colour>,
+    pub ul: Option<Colour>,
+    pub ol_size: f64,
+    pub ul_size: f64,
     pub text: String,
     pub font: String,
 }
 
 #[derive(Clone)]
 pub struct Filler {
-    pub bg: Color,
-}
-
-impl Filler {
-    pub fn new(bg: Color) -> Self {
-        Filler {
-            bg
-        }
-    }
+    pub bg: Colour,
+    pub ol: Option<Colour>,
+    pub ul: Option<Colour>,
+    pub ol_size: f64,
+    pub ul_size: f64,
 }
 
 #[derive(Clone)]

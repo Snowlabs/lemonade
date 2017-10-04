@@ -16,12 +16,12 @@ pub struct Bar<T> {
 }
 
 impl Bar<window::XCB> {
-    pub fn new_xcb() -> Bar<window::XCB> {
+    pub fn with_xcb() -> Bar<window::XCB> {
         let window = window::XCB::new();
         window.dock();
 
         let surface =  window.create_surface();
-        let cr = cairo::Context::new(&surface);
+        //let cr = cairo::Context::new(&surface);
 
         let size = (1, 1);
 
@@ -65,26 +65,48 @@ impl<T: Dock> Bar<T> {
         let mut n = 0;
         let mut pos = 0.0;
 
-        for (i, v) in v.iter().enumerate() {
+        for v in v {
             match *v {
                 format::FormatItem::Text(ref t) => {
+                    // Set the font and text
                     let font = pango::FontDescription::from_string(&t.font);
                     let layout = cr.create_pango_layout();
                     layout.set_font_description(&font);
                     layout.set_text(&t.text);
 
-                    let (w, _) = layout.get_pixel_size();
+                    let (w, h) = layout.get_pixel_size();
 
+                    // Text background
                     cr.set_source_rgba(t.bg.r, t.bg.g, t.bg.b, t.bg.a);
                     cr.rectangle(0.0, 0.0, w as f64, bh as f64);
                     cr.fill();
 
-                    cr.set_source_rgba(t.fg.r, t.fg.g, t.fg.b, t.fg.a);
-                    cr.show_pango_layout(&layout);
+                    // Overline
+                    if let Some(ref ol) = t.ol {
+                        cr.set_source_rgba(ol.r, ol.g, ol.b, ol.a);
+                        cr.rectangle(0.0, 0.0, w as f64, t.ol_size);
+                        cr.fill();
+                    }
 
+                    // Underline
+                    if let Some(ref ul) = t.ul {
+                        cr.set_source_rgba(ul.r, ul.g, ul.b, ul.a);
+                        cr.rectangle(0.0, bh as f64 - t.ol_size,
+                                     w as f64, bh as f64);
+                        cr.fill();
+                    }
+
+                    // Text foreground
+                    cr.save(); {
+                        cr.set_source_rgba(t.fg.r, t.fg.g, t.fg.b, t.fg.a);
+                        println!("{}", (bh - h) as f64 / 2.0);
+                        cr.translate(0.0, (bh - h) as f64 / 2.0);
+                        cr.show_pango_layout(&layout);
+                    } cr.restore();
+
+                    // Move to next position
                     cr.translate(w as f64, 0.0);
-
-                    //pos += w as f64;
+                    pos += w as f64;
                 }
 
                 format::FormatItem::Filler(ref f) => {
@@ -100,6 +122,22 @@ impl<T: Dock> Bar<T> {
                     cr.set_source_rgba(f.bg.r, f.bg.g, f.bg.b, f.bg.a);
                     cr.rectangle(0.0, 0.0, pnext, bh as f64);
                     cr.fill();
+
+                    // TODO: fix repetition
+                    // Overline
+                    if let Some(ref ol) = f.ol {
+                        cr.set_source_rgba(ol.r, ol.g, ol.b, ol.a);
+                        cr.rectangle(0.0, 0.0, pnext as f64, f.ol_size);
+                        cr.fill();
+                    }
+
+                    // Underline
+                    if let Some(ref ul) = f.ul {
+                        cr.set_source_rgba(ul.r, ul.g, ul.b, ul.a);
+                        cr.rectangle(0.0, bh as f64 - f.ol_size,
+                                     pnext as f64, bh as f64);
+                        cr.fill();
+                    }
 
                     cr.translate(pnext, 0.0);
                     pos += pnext;
