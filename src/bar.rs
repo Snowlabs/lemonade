@@ -64,7 +64,6 @@ impl<T: Dock> Bar<T> {
 
     // TODO: remove the insane repetition
     pub fn draw(&mut self, f: Vec<format::FormatItem>) {
-
         // TODO: remove extra fillers
         //loop {
             //if let Some(&format::FormatItem::Filler(_)) = v.last() {

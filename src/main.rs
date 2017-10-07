@@ -44,7 +44,7 @@ impl LemonParser {
                 "[BFUu]", "#(?P<colo>-|(?:[[:xdigit:]]{3,4}){1,2})", "|",
                 "[!-+\\-]", "(?P<attr>[uo])", "|",
                 "T", "(?P<index>-|[1-9])", "|",
-                "A", "(?:(?P<butt>[1-9]):(?P<cmd>(?:[^:]|\\\\:)+?):)?", "|",
+                "A", "(?:(?P<butt>[1-9])?:(?P<cmd>(?:[^:]|\\\\:)+?):)?", "|",
                 "R",
             r")\}",
             )
@@ -213,10 +213,19 @@ impl LemonParser {
                 }
 
                 'A' => {
-                    match caps.name("butt") {
+                    // This is to differentiate between
+                    // %{A} and %{Abut:cmd}. If caps is Some
+                    // then there is a command
+                    match caps.name("cmd") {
+
                         // Push button on to the stack
                         Some(_) => {
-                            let b = u8::from_str(&caps["butt"]).unwrap();
+                            // If no button is specified, chose 1
+                            let b = match caps.name("butt") {
+                                None    => 1,
+                                Some(s) => u8::from_str(s.as_str()).unwrap(),
+                            };
+                            // The command itself
                             let c = String::from(&caps["cmd"]);
                             butts.borrow_mut().push((b, c));
                         }
