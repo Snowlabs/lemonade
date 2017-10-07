@@ -11,7 +11,7 @@ use lemonade::format::{FormatItem, Text, Filler, Color};
 fn main() {
 
     let mut bar = Bar::with_xcb();
-    bar.size(1920, 30);
+    bar.set_size(1920, 30);
 
     let mut buf = String::new();
     let mut lem = LemonParser::new();
@@ -24,7 +24,7 @@ fn main() {
 
         let f = lem.parse(&buf);
 
-        bar.draw(&f);
+        bar.draw(f);
     }
 }
 
@@ -44,6 +44,7 @@ impl LemonParser {
                 "[BFUu]", "#(?P<colo>-|(?:[[:xdigit:]]{3,4}){1,2})", "|",
                 "[!-+\\-]", "(?P<attr>[uo])", "|",
                 "T", "(?P<index>-|[1-9])", "|",
+                "A", "(?:(?P<butt>[1-9]):(?P<cmd>(?:[^:]|\\\\:)+?):)?", "|",
                 "R",
             r")\}",
             )
@@ -73,6 +74,9 @@ impl LemonParser {
         let fg = RefCell::new(self.fg.clone());
         let ol = RefCell::new(self.ol.clone());
         let ul = RefCell::new(self.ul.clone());
+
+        // Stack for holding buttons
+        let butts: RefCell<Vec<(u8, String)>> = RefCell::new(Vec::new());
 
         // Attributes
         let oline = RefCell::new(false); // overline
@@ -116,6 +120,7 @@ impl LemonParser {
                     else { None },
                 ol_size,
                 ul_size,
+                cmd: butts.borrow().clone(),
                 text: String::from(s),
                 font: font.borrow().clone(),
             }));
@@ -134,6 +139,7 @@ impl LemonParser {
                         else { None },
                     ol_size,
                     ul_size,
+                    cmd: butts.borrow().clone(),
                 }));
             }
         };
@@ -172,7 +178,6 @@ impl LemonParser {
                     swapc();
                 }
 
-                // TODO: implement overline
                 'F'|'B'|'U'|'u' => {
                     let def;
                     let mut c = match t {
@@ -207,6 +212,24 @@ impl LemonParser {
                     }
                 }
 
+                'A' => {
+                    match caps.name("butt") {
+                        // Push button on to the stack
+                        Some(_) => {
+                            let b = u8::from_str(&caps["butt"]).unwrap();
+                            let c = String::from(&caps["cmd"]);
+                            butts.borrow_mut().push((b, c));
+                        }
+
+                        // Pop off a button
+                        None => {
+                            if let None = butts.borrow_mut().pop() {
+                                eprintln!("Unassociated %{{A}}!");
+                            }
+                        }
+                    }
+                }
+
                 '!'|'+'|'-' => {
                     let mut a = match &caps["attr"] {
                         "o" => { oline.borrow_mut() }
@@ -232,9 +255,9 @@ impl LemonParser {
             epos = fmt.len();
         }
 
-        pusht(&mut v[i], &fmt[bpos..epos]);
+        // TODO: remove - 1 for newline
+        pusht(&mut v[i], &fmt[bpos..epos - 1]);
 
-        // TODO: clean this up
         let mut r: Vec<FormatItem> = Vec::new();
         for i in 0..3 {
             r.extend_from_slice(&v[i]);

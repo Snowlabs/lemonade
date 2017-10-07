@@ -8,5 +8,5 @@ cairo-sys-rs = "^0"
 cairo-rs = { version = "^0", features = ["xcb"] }
 pango = "^0"
 pangocairo = "^0"
-xcb = "^0"
+xcb = { version = "^0", features = ["thread"] }
 regex = "^0"

@@ -63,6 +63,7 @@ pub struct Text {
     pub ul: Option<Colour>,
     pub ol_size: f64,
     pub ul_size: f64,
+    pub cmd: Vec<(u8, String)>, // mbutton, cmd
     pub text: String,
     pub font: String,
 }
@@ -74,6 +75,7 @@ pub struct Filler {
     pub ul: Option<Colour>,
     pub ol_size: f64,
     pub ul_size: f64,
+    pub cmd: Vec<(u8, String)>,
 }
 
 #[derive(Clone)]
