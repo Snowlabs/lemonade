@@ -9,4 +9,11 @@ cairo-rs = { version = "^0", features = ["xcb"] }
 pango = "^0"
 pangocairo = "^0"
 xcb = { version = "^0", features = ["thread"] }
+
+# bin deps
+# These should be separate eventually
 regex = "^0"
+clap = "^2"
+
+[profile.release]
+lto = false

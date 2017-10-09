@@ -1,5 +1,7 @@
 extern crate lemonade;
 extern crate regex;
+#[macro_use]
+extern crate clap;
 
 use std::cell::RefCell;
 use std::io;
@@ -10,29 +12,95 @@ use lemonade::format::{FormatItem, Text, Filler, Color};
 
 fn main() {
 
-    let mut bar = Bar::with_xcb();
-    bar.set_size(1920, 30);
+    let args = clap_app!(lemonade =>
+        (about: "lemonbar replacement with extra features")
+        (@arg GEOMETRY: -g +takes_value "Set geometry. Format is WxH+x+y")
+        (@arg bott: -b "Dock bar at the bottom")
+        //(@arg FORCE: -d "Force docking on unsupported WMs")
+        (@arg FONT: -f ... +takes_value #{1, 1} "Load a font")
+        //(@arg CLICK: -a +takes_value "Number of clickable areas")
+        // TODO: currently does not render for the first few seconds
+        (@arg perm: -p "Don't exit after stdin stops")
+        //(@arg NAME: -n +takes_value "Set window name")
+        (@arg UL_SIZE: -u +takes_value "Underline width in pixels")
+        (@arg BG_COLO: -B +takes_value "Set default background colour")
+        (@arg FG_COLO: -F +takes_value "Set default foreground colour")
+        (@arg OL_OLCO: -O +takes_value "Set default overline colour. Defaults to -U")
+        (@arg UL_COLO: -U +takes_value "Set default underline colour")
+    ).get_matches();
 
-    let mut buf = String::new();
+
+    // bar takes care of drawing the window.
+    // lem handles the input.
+    let mut bar = Bar::with_xcb();
     let mut lem = LemonParser::new();
 
+    // Whether to exit when stdin ends
+    let quit_on_input_end = ! args.is_present("perm");
+
+    bar.bottom(args.is_present("bott"));
+
+    // Set command-line arguments
+    if let Some(s) = args.value_of("GEOMETRY") {
+        bar.set_geometry(&s).unwrap();
+    }
+
+    if let Some(s) = args.values_of("FONT") {
+        lem.font_list = s.map(|s| s.to_string()).collect();
+    }
+
+    if let Some(s) = args.value_of("UL_SIZE") {
+        lem.ul_size = f64::from_str(s).unwrap(); // TODO: validate
+        if let None = args.value_of("OL_SIZE") {
+            lem.ol_size = f64::from_str(s).unwrap();
+        }
+    }
+
+    if let Some(s) = args.value_of("BG_COLO") {
+        lem.bg = Color::from_hex(&s).unwrap();
+    }
+
+    if let Some(s) = args.value_of("FG_COLO") {
+        lem.fg = Color::from_hex(&s).unwrap();
+    }
+
+    if let Some(s) = args.value_of("OL_COLO") {
+        lem.ol = Color::from_hex(&s).unwrap();
+    }
+
+    if let Some(s) = args.value_of("UL_COLO") {
+        lem.ul = Color::from_hex(&s).unwrap();
+    }
+
+    // Loop for reading from stdin and variables
+    let mut buf = String::new();
     loop {
-        buf.clear();
-        if let Err(_) = io::stdin().read_line(&mut buf) {
-            continue;
+        match io::stdin().read_line(&mut buf) {
+            Ok(n) if n == 0 => {
+                match quit_on_input_end {
+                    true  => std::process::exit(0),
+                    false => continue,
+                }
+            }
+            Ok(_) => {}
+            Err(_) => std::process::exit(1),
         }
 
-        let f = lem.parse(&buf);
-
-        bar.draw(f);
+        buf.pop(); // Remove newline
+        bar.set_fmt(lem.parse(&buf));
+        bar.draw();
+        buf.clear();
     }
 }
 
 pub struct LemonParser {
-    bg: Color,
-    fg: Color,
-    ol: Color,
-    ul: Color,
+    pub bg: Color,
+    pub fg: Color,
+    pub ol: Color,
+    pub ul: Color,
+    pub ol_size: f64,
+    pub ul_size: f64,
+    pub font_list: Vec<String>,
     re: Regex,
 }
 
@@ -50,16 +118,22 @@ impl LemonParser {
             )
         ).unwrap();
 
-        let bg = Color::new(1.0, 1.0, 1.0, 1.0);
-        let fg = Color::new(0.0, 0.0, 0.0, 1.0);
+        let bg = Color::new(0.0, 0.0, 0.0, 0.0);
+        let fg = Color::new(1.0, 1.0, 1.0, 1.0);
         let ol = bg.clone();
         let ul = bg.clone();
+        let ol_size = 1.0;
+        let ul_size = 1.0;
+        let font_list = vec![String::new()];
 
         Self {
             bg,
             fg,
             ol,
             ul,
+            ol_size,
+            ul_size,
+            font_list,
             re,
         }
     }
@@ -67,7 +141,7 @@ impl LemonParser {
     pub fn parse(&mut self, fmt: &str) -> Vec<FormatItem> {
         // Temporary variables for computing string slices
         let mut bpos: usize = 0;
-        let mut epos: usize = 0;
+        let mut epos: usize = fmt.len();
 
         // Colour storage
         let bg = RefCell::new(self.bg.clone());
@@ -82,17 +156,11 @@ impl LemonParser {
         let oline = RefCell::new(false); // overline
         let uline = RefCell::new(false); // underline
 
-        // TODO: tmp
-        let ol_size = 2.0;
-        let ul_size = 2.0;
+        let ol_size = self.ol_size;
+        let ul_size = self.ul_size;
 
         // List of fonts and the current font
-        // TODO: tmp
-        let font_list = vec![String::from("Noto Sans 15"),
-                             String::from("Noto Serif 15"),
-                             String::from("Source Code Pro 15"),
-                             String::from("Terminus 15")];
-        let font = RefCell::new(font_list[..].join(", "));
+        let font = RefCell::new(self.font_list[..].join(", "));
 
         // Return vector
         let mut v: Vec<Vec<FormatItem>> = Vec::with_capacity(3);
@@ -145,10 +213,11 @@ impl LemonParser {
         };
 
         let swapc = || {
-            // TODO: somehow get std::mem::swap to work
-            let t = bg.borrow().clone();
-            *bg.borrow_mut() = fg.borrow().clone();
-            *fg.borrow_mut() = t;
+            // Since fg and bg are wrapped in a RefCell, mem::swap
+            // cannot be used. This is an alternative.
+            unsafe {
+                std::ptr::swap(fg.as_ptr(), bg.as_ptr());
+            }
         };
 
         // Iterate through every formatting item
@@ -197,17 +266,20 @@ impl LemonParser {
 
                 'T' => {
                     if &caps["index"] == "-" {
-                        *font.borrow_mut() = font_list[..].join(", ");
+                        *font.borrow_mut() = self.font_list[..].join(", ");
                     } else {
 
                         // 1-based indexing
                         let i = usize::from_str(&caps["index"]).unwrap() - 1;
 
-                        if i > font_list.len() {
+                        if i > self.font_list.len() {
                             eprintln!("Font index {} is too high", i);
-                            *font.borrow_mut() = font_list[..].join(", ");
+                                *font.borrow_mut() = self.font_list[..].join(", ");
                         } else {
-                            *font.borrow_mut() = font_list.get(i).unwrap().clone();
+                            *font.borrow_mut() = match self.font_list.get(i) {
+                                Some(f) => f.clone(),
+                                None    => String::new(),
+                            }
                         }
                     }
                 }
@@ -264,8 +336,7 @@ impl LemonParser {
             epos = fmt.len();
         }
 
-        // TODO: remove - 1 for newline
-        pusht(&mut v[i], &fmt[bpos..epos - 1]);
+        pusht(&mut v[i], &fmt[bpos..epos]);
 
         let mut r: Vec<FormatItem> = Vec::new();
         for i in 0..3 {

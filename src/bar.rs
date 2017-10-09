@@ -5,12 +5,14 @@ use format;
 use window;
 use window::Dock;
 
+use std::num::ParseIntError;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 use cairo::XCBSurface;
 use pango::LayoutExt;
 use pangocairo::CairoContextExt;
 
-pub struct Bar<T> {
+pub struct Bar<T: Dock> {
     window: T,
     surface: cairo::Surface,
     fmt: Vec<format::FormatItem>,
@@ -19,6 +21,12 @@ pub struct Bar<T> {
 }
 
 impl Bar<window::XCB> {
+
+    /// Create an instance of Bar using XCB.
+    ///
+    /// By default, the width is set to the width of the screen and
+    /// the height is 25. The bar is drawn at the top first, which can
+    /// be set after.
     pub fn with_xcb() -> Bar<window::XCB> {
         let window = window::XCB::new();
         window.dock();
@@ -37,6 +45,10 @@ impl Bar<window::XCB> {
             size,
         };
 
+        let width = r.window.get_screen_size().0 as i32;
+        r.set_size(width, 25);
+
+        // Set callbacks
         let cmds = r.cmds.clone();
         r.window.click_cb(move |x, _, b| {
             let cmds = cmds.lock().unwrap();
@@ -54,26 +66,79 @@ impl Bar<window::XCB> {
 
 impl<T: Dock> Bar<T> {
     pub fn set_size(&mut self, w: i32, h: i32) {
-        assert!(w > 0);
-        assert!(h > 0);
+        assert!(w >= 0);
+        assert!(h >= 0);
 
         self.size = (w, h);
         self.window.set_size(w as u16, h as u16);
         self.surface.set_size(w, h);
     }
 
-    // TODO: remove the insane repetition
-    pub fn draw(&mut self, f: Vec<format::FormatItem>) {
-        // TODO: remove extra fillers
-        //loop {
-            //if let Some(&format::FormatItem::Filler(_)) = v.last() {
-                //v.pop();
-            //} else {
-                //break;
-            //}
-        //}
+    pub fn set_offset(&mut self, x: i32, y: i32) {
+        assert!(x >= 0);
+        assert!(y >= 0);
 
+        self.window.set_offset(x as u16, y as u16);
+    }
+
+    /// Set the bars geometry with WxH+x+y format.
+    ///
+    /// This does not validate the string and might return Err. If the
+    /// width is omitted, it defaults to the screen width. The height
+    /// defaults to 25, for absolutely no reason.
+    ///
+    /// The position arguments x and y both default to 0.
+    pub fn set_geometry(&mut self, g: &str) -> Result<(), ParseIntError> {
+        fn stoi(s: &str) -> Result<i32, ParseIntError> {
+            if s.len() == 0 { Ok(0) }
+            else { i32::from_str(s) }
+        }
+
+        let (mut w, mut h) = (self.window.get_screen_size().0 as i32, 0);
+        let (mut x, mut y) = (0, 0);
+
+        let mut pl1 = g.len();
+        if let Some(i) = g.find('+')  {
+            pl1 = i;
+
+            if let Some(i) = g.rfind('+') {
+                x = stoi(&g[pl1+1..i])?;
+                y = stoi(&g[i+1..g.len()])?;
+            } else {
+                x = stoi(&g[pl1..g.len()])?;
+            }
+        }
+
+        if let Some(i) = g.find('x') {
+            if let Some(s) = g.get(0..i) {
+                w = stoi(s)?;
+            }
+
+            if let Some(s) = g.get(i+1..pl1) {
+                h = stoi(s)?;
+            }
+        } else {
+            w = stoi(&g[0..pl1])?;
+        }
+
+        self.set_size(w, h);
+        self.set_offset(x, y);
+
+        Ok(())
+    }
+
+    pub fn bottom(&mut self, b: bool) {
+        if b { self.window.bottom(); }
+        else { self.window.top();    }
+    }
+
+    pub fn set_fmt(&mut self, f: Vec<format::FormatItem>) {
         self.fmt = f;
+    }
+
+    // TODO: remove the insane repetition
+    pub fn draw(&self) {
+
         let mut cmds = self.cmds.lock().unwrap();
         *cmds = Vec::new();
 
