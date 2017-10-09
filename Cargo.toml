@@ -11,9 +11,12 @@ pangocairo = "^0"
 xcb = { version = "^0", features = ["thread"] }
 
 # bin deps
-# These should be separate eventually
 regex = "^0"
 clap = "^2"
 
 [profile.release]
 lto = false
+
+[[bin]]
+name = "lemonade"
+path = "src/bin/main.rs"

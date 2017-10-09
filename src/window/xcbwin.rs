@@ -274,6 +274,8 @@ impl Dock for XCB {
         } else {
             self.set_pos(x, y);
         }
+
+        self.reposition_window();
     }
 
     fn get_screen_size(&self) -> (u16, u16) {
