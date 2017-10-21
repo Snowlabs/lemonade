@@ -11,6 +11,8 @@ use std::str::FromStr;
 use lemonade::Bar;
 use lemonade::format::Color;
 
+macro_rules! arg_colo
+
 fn main() {
 
     let args = clap_app!(lemonade =>
@@ -20,7 +22,6 @@ fn main() {
         //(@arg FORCE: -d "Force docking on unsupported WMs")
         (@arg FONT: -f +takes_value +multiple "Load a font")
         //(@arg CLICK: -a +takes_value "Number of clickable areas")
-        // TODO: currently does not render for the first few seconds
         (@arg perm: -p "Don't exit after stdin stops")
         //(@arg NAME: -n +takes_value "Set window name")
         (@arg UL_SIZE: -u +takes_value "Underline width in pixels")
@@ -88,8 +89,10 @@ fn main() {
         }
 
         buf.pop(); // Remove newline
+
         bar.set_fmt(lem.parse(&buf));
         bar.draw();
+
         buf.clear();
     }
 }
@@ -109,7 +112,8 @@ fn is_colo(s: String) -> Result<(), String> {
         _ => return Err("Invalid number of digits".to_string()),
     }
 
-    if let Some(_) = s.find(|s| {
+    // Test if string contains any non-hex digits
+    if let Some(_) = s[1..].find(|s| {
         match s {
             'a'...'f'|'A'...'F'|'0'...'9' => false,
             _ => true,

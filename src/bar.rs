@@ -139,12 +139,15 @@ impl<T: Dock> Bar<T> {
     // TODO: remove the insane repetition
     pub fn draw(&self) {
 
+
         let mut cmds = self.cmds.lock().unwrap();
         *cmds = Vec::new();
 
         let cr = cairo::Context::new(&self.surface);
-        let (bw, bh) = self.size;
 
+        cr.set_operator(cairo::Operator::Source);
+
+        let (bw, bh) = self.size;
         let count = self.filler_count();
         let inter = bw as f64 / count as f64;
         let lengths = self.get_lengths();
