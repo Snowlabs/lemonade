@@ -11,7 +11,6 @@ use std::str::FromStr;
 use lemonade::Bar;
 use lemonade::format::Color;
 
-macro_rules! arg_colo
 
 fn main() {
 
