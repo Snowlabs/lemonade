@@ -1,7 +1,12 @@
 [package]
 name = "lemonade"
 version = "0.1.0"
+description = "A lemonbar replacement written in rust"
+repository = "https://github.com/Snowlabs/lemonade"
+readme = "README.md"
+license = "MIT"
 authors = ["Sheheryar Parvaz <skipper308@hotmail.ca>"]
+doc = true
 
 [dependencies]
 cairo-sys-rs = "^0"
@@ -20,3 +25,4 @@ lto = false
 [[bin]]
 name = "lemonade"
 path = "src/bin/main.rs"
+doc = false
