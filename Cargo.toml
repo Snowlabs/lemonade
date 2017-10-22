@@ -6,7 +6,6 @@ repository = "https://github.com/Snowlabs/lemonade"
 readme = "README.md"
 license = "MIT"
 authors = ["Sheheryar Parvaz <skipper308@hotmail.ca>"]
-doc = true
 
 [dependencies]
 cairo-sys-rs = "^0"

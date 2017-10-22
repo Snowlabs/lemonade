@@ -1,7 +1,5 @@
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::RwLock;
-use std::ops::DerefMut;
 use std::ops::Drop;
 use std::thread;
 use window::Dock;
@@ -39,7 +37,7 @@ pub struct XCB {
     visual:   Visualid,
     depth:    u8,
 
-    size:     Arc<RwLock<(u16, u16)>>, // (w, h)
+    size:     (u16, u16), // (w, h)
     pos:      (i16, i16), // (x, y)
     scr_size: (u16, u16),
     bottom:   bool,
@@ -62,7 +60,7 @@ impl XCB {
             Arc::new(Mutex::new(Box::new(|_, _, _| {} // Placeholder closure
         )));
         let bufpix = conn.generate_id(); // Pixmap created later
-        let size = Arc::new(RwLock::new( (1u16, 1u16) )); // default size
+        let size = (1u16, 1u16); // default size
 
         let root;
         let visual;
@@ -113,13 +111,12 @@ impl XCB {
             (CW_BORDER_PIXEL, 0),
         ];
 
-        let size = x.size.read().unwrap().clone();
         create_window(&*x.conn,
                       x.depth,
                       x.win,
                       x.root,
                       x.pos.0, x.pos.1,
-                      size.0, size.1,
+                      x.size.0, x.size.1,
                       0,
                       WINDOW_CLASS_INPUT_OUTPUT as u16,
                       x.visual,
@@ -127,8 +124,8 @@ impl XCB {
             .request_check().unwrap();
 
         create_gc(&*x.conn, x.gc, x.win, &[]);
-        create_pixmap(&*x.conn, x.depth, x.bufpix, x.win,
-                              size.0, size.1);
+        create_pixmap(&*x.conn, x.depth, x.bufpix,
+                      x.win, x.size.0, x.size.1);
 
         // Create event-monitoring thread
         let conn = x.conn.clone();
@@ -136,7 +133,6 @@ impl XCB {
         let win = x.win;
         let bufpix = x.bufpix;
         let gc = x.gc;
-        let size = x.size.clone();
         thread::spawn(move || {
             while let Some(e) = conn.wait_for_event() {
                 match e.response_type() as u8 {
@@ -153,9 +149,17 @@ impl XCB {
                     }
 
                     EXPOSE => {
-                        let size = size.read().unwrap();
+                        let e: &ExposeEvent = unsafe {
+                            cast_event(&e)
+                        };
+
+                        let w = e.width();
+                        let h = e.height();
+                        let x = e.x() as i16;
+                        let y = e.y() as i16;
                         copy_area(&*conn, bufpix, win, gc,
-                                  0, 0, 0, 0, size.0, size.1);
+                                  x, y, x, y, w, h);
+
                         conn.flush();
                     }
 
@@ -180,8 +184,6 @@ impl XCB {
     fn reposition_window(&mut self) {
         self.unmap_window();
 
-        let size = self.size.read().unwrap().clone();
-
         let mut data: [i16; 12] = [
             0, 0, 0, 0, // left, right, top, bottom
             0, 0, // left offset
@@ -191,20 +193,20 @@ impl XCB {
         ];
 
         let curr_x = self.pos.0;
-        let (xb, xe) = (curr_x, curr_x + size.0 as i16);
+        let (xb, xe) = (curr_x, curr_x + self.size.0 as i16);
 
         let ypos;
         if self.bottom {
-            ypos = self.scr_size.1 as i16 - size.1 as i16;
+            ypos = self.scr_size.1 as i16 - self.size.1 as i16;
 
             data[2]  = 0; // top offset
-            data[3]  = size.1 as i16;
+            data[3]  = self.size.1 as i16;
             data[8]  = 0;  data[9]  = 0;
             data[10] = xb; data[11] = xe;
         } else {
             ypos = 0;
 
-            data[2]  = size.1 as i16;
+            data[2]  = self.size.1 as i16;
             data[3]  = 0; // bottom offset
             data[8]  = xb; data[9]  = xe;
             data[10] = 0;  data[11] = 0;
@@ -250,20 +252,33 @@ impl XCB {
         panic!("Failed to find visual type");
     }
 
+    /// Set a new size for the window.
+    ///
+    /// Note: This clears the buffer, so make sure to draw
+    /// after setting the size and not before. Else, the
+    /// drawn image is lost.
     fn set_size(&mut self, w: u16, h: u16) {
+
         // Update the pixmap to match new size
         free_pixmap(&self.conn, self.bufpix);
         create_pixmap(&self.conn, self.depth, self.bufpix,
                       self.root, w, h);
 
-        configure_window(&self.conn, self.win, &[
+        // Clear the new pixmap
+        change_gc(&*self.conn, self.gc, &[(GC_FUNCTION, GX_CLEAR)]);
+        copy_area(&*self.conn, self.bufpix, self.bufpix, self.gc,
+                  0, 0, 0, 0, w, h);
+        change_gc_checked(&*self.conn, self.gc, &[(GC_FUNCTION, GX_COPY)])
+            .request_check().unwrap();
+
+        // Set the size
+        configure_window(&*self.conn, self.win, &[
                 (CONFIG_WINDOW_WIDTH as u16, w as u32),
                 (CONFIG_WINDOW_HEIGHT as u16, h as u32),
         ]).request_check()
           .unwrap();
 
-        *self.size
-            .write().unwrap().deref_mut() = (w, h);
+        self.size = (w, h);
     }
 
     /// Set the internal position value.
@@ -300,10 +315,9 @@ impl Dock for XCB {
         };
 
         // Create the surface using previous variables
-        let size = self.size.read().unwrap();
         return cairo::Surface::create(
             &cr_conn, &cr_draw, &cr_visual,
-            size.0 as i32, size.1 as i32);
+            self.size.0 as i32, self.size.1 as i32);
     }
 
     fn dock(&self) {
@@ -352,9 +366,8 @@ impl Dock for XCB {
     }
 
     fn flush(&self) {
-        let size = self.size.read().unwrap();
         copy_area(&*self.conn, self.bufpix, self.win, self.gc,
-                  0, 0, 0, 0, size.0, size.1);
+                  0, 0, 0, 0, self.size.0, self.size.1);
         self.conn.flush();
     }
 

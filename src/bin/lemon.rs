@@ -145,11 +145,23 @@ impl LemonParser {
                         'l' => 0,
                         'c' => 1,
                         'r' => 2,
-                        _ => 0,
+                        _   => 0,
                     };
 
+                    // Check for repetition
                     if i != n {
-                        pushf(&mut v[i]);
+
+                        // We check if the last item isn't already a filler
+                        // and make sure not to push a filler onto the last
+                        // block
+                        match *v[i].last().unwrap() {
+                            FormatItem::Filler(_) => {}
+
+                            _ => if i != 2 {
+                                pushf(&mut v[i]);
+                            }
+                        }
+
                         i = n;
                     }
                 }
