@@ -8,6 +8,7 @@ use window::Dock;
 use std::num::ParseIntError;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
+
 use cairo::XCBSurface;
 use pango::LayoutExt;
 use pangocairo::CairoContextExt;
@@ -144,7 +145,6 @@ impl<T: Dock> Bar<T> {
         *cmds = Vec::new();
 
         let cr = cairo::Context::new(&self.surface);
-
         cr.set_operator(cairo::Operator::Source);
 
         let (bw, bh) = self.size;
@@ -154,9 +154,39 @@ impl<T: Dock> Bar<T> {
         let mut n = 0;
         let mut pos = 0.0;
 
+        // Take care of drawing background and adding commands
+        let mut draw_bg = |bg: &format::BG, pos: f64, w: f64| {
+
+            // Text background
+            cr.set_source_rgba(bg.bg.r, bg.bg.g, bg.bg.b, bg.bg.a);
+            cr.rectangle(0.0, 0.0, w, bh as f64);
+            cr.fill();
+
+            // Overline
+            if let Some(ref ol) = bg.ol {
+                cr.set_source_rgba(ol.r, ol.g, ol.b, ol.a);
+                cr.rectangle(0.0, 0.0, w, bg.ol_size);
+                cr.fill();
+            }
+
+            // Underline
+            if let Some(ref ul) = bg.ul {
+                cr.set_source_rgba(ul.r, ul.g, ul.b, ul.a);
+                cr.rectangle(0.0, bh as f64 - bg.ol_size,
+                             w, bh as f64);
+                cr.fill();
+            }
+
+            for &(b, ref s) in &bg.cmd {
+                cmds.push((b, s.clone(),
+                    pos as i16, pos as i16 + w as i16));
+            }
+        };
+
         for v in &self.fmt {
             match *v {
-                format::FormatItem::Text(ref t) => {
+                format::FormatItem::Text(ref t, ref bg) => {
+
                     // Set the font and text
                     let font = pango::FontDescription::from_string(&t.font);
                     let layout = cr.create_pango_layout();
@@ -165,31 +195,7 @@ impl<T: Dock> Bar<T> {
 
                     let (w, h) = layout.get_pixel_size();
 
-                    // Push commands
-                    for &(b, ref s) in &t.cmd {
-                        cmds.push((b, s.clone(),
-                            pos as i16, pos as i16 + w as i16));
-                    }
-
-                    // Text background
-                    cr.set_source_rgba(t.bg.r, t.bg.g, t.bg.b, t.bg.a);
-                    cr.rectangle(0.0, 0.0, w as f64, bh as f64);
-                    cr.fill();
-
-                    // Overline
-                    if let Some(ref ol) = t.ol {
-                        cr.set_source_rgba(ol.r, ol.g, ol.b, ol.a);
-                        cr.rectangle(0.0, 0.0, w as f64, t.ol_size);
-                        cr.fill();
-                    }
-
-                    // Underline
-                    if let Some(ref ul) = t.ul {
-                        cr.set_source_rgba(ul.r, ul.g, ul.b, ul.a);
-                        cr.rectangle(0.0, bh as f64 - t.ol_size,
-                                     w as f64, bh as f64);
-                        cr.fill();
-                    }
+                    draw_bg(bg, pos, w as f64);
 
                     // Text foreground
                     cr.save(); {
@@ -203,7 +209,7 @@ impl<T: Dock> Bar<T> {
                     pos += w as f64;
                 }
 
-                format::FormatItem::Filler(ref f) => {
+                format::FormatItem::Filler(ref bg) => {
                     n += 1;
                     let mut pnext = (inter * n as f64) - pos;
 
@@ -213,30 +219,7 @@ impl<T: Dock> Bar<T> {
                         pnext -= lengths[n as usize] / 2.0;
                     }
 
-                    // Push commands
-                    for &(b, ref s) in &f.cmd {
-                        cmds.push((b, s.clone(),
-                            pos as i16, pos as i16 + pnext as i16));
-                    }
-
-                    cr.set_source_rgba(f.bg.r, f.bg.g, f.bg.b, f.bg.a);
-                    cr.rectangle(0.0, 0.0, pnext, bh as f64);
-                    cr.fill();
-
-                    // Overline
-                    if let Some(ref ol) = f.ol {
-                        cr.set_source_rgba(ol.r, ol.g, ol.b, ol.a);
-                        cr.rectangle(0.0, 0.0, pnext as f64, f.ol_size);
-                        cr.fill();
-                    }
-
-                    // Underline
-                    if let Some(ref ul) = f.ul {
-                        cr.set_source_rgba(ul.r, ul.g, ul.b, ul.a);
-                        cr.rectangle(0.0, bh as f64 - f.ol_size,
-                                     pnext as f64, bh as f64);
-                        cr.fill();
-                    }
+                    draw_bg(bg, pos, pnext);
 
                     cr.translate(pnext, 0.0);
                     pos += pnext;
@@ -268,7 +251,7 @@ impl<T: Dock> Bar<T> {
         let mut n = 0.0;
         for i in &self.fmt {
             match *i {
-                format::FormatItem::Text(ref t) => {
+                format::FormatItem::Text(ref t, _) => {
                     let font = pango::FontDescription::from_string(&t.font);
                     lay.set_text(&t.text);
                     lay.set_font_description(&font);

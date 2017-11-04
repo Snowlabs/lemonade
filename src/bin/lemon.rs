@@ -2,7 +2,7 @@ use std;
 use std::cell::RefCell;
 use std::str::FromStr;
 use regex::Regex;
-use lemonade::format::{FormatItem, Text, Filler, Color};
+use lemonade::format::{FormatItem, Text, BG, Color};
 
 pub struct LemonParser {
     pub bg: Color,
@@ -24,6 +24,7 @@ impl LemonParser {
                 "[!-+\\-]", "(?P<attr>[uo])", "|",
                 "T", "(?P<index>-|[1-9])", "|",
                 "A", "(?:(?P<butt>[1-9])?:(?P<cmd>(?:[^:]|\\\\:)+?):)?", "|",
+                "I", ":(?P<img>.+?)", "|",
                 "R",
             r")\}",
             )
@@ -80,6 +81,20 @@ impl LemonParser {
         // Index of currently processed vector
         let mut i: usize = 0;
 
+        // Generate a BG based on the current parameters
+        let get_bg = || -> BG {
+            BG {
+                bg: bg.borrow().clone(),
+                ol: if *oline.borrow() { Some(ol.borrow().clone()) }
+                    else { None },
+                ul: if *uline.borrow() { Some(ul.borrow().clone()) }
+                    else { None },
+                ol_size,
+                ul_size,
+                cmd: butts.borrow().clone(),
+            }
+        };
+
         // Push s into the vector
         let pusht = |v: &mut Vec<FormatItem>, s: &str| {
             if ! s.is_empty() {
@@ -90,19 +105,15 @@ impl LemonParser {
                 return
             }
 
-            v.push(FormatItem::Text(Text {
-                bg: bg.borrow().clone(),
-                fg: fg.borrow().clone(),
-                ol: if *oline.borrow() { Some(ol.borrow().clone()) }
-                    else { None },
-                ul: if *uline.borrow() { Some(ul.borrow().clone()) }
-                    else { None },
-                ol_size,
-                ul_size,
-                cmd: butts.borrow().clone(),
-                text: String::from(s),
-                font: font.borrow().clone(),
-            }));
+            v.push(FormatItem::Text(
+                Text {
+                    fg: fg.borrow().clone(),
+                    text: String::from(s),
+                    font: font.borrow().clone(),
+                },
+
+                get_bg()
+            ));
         };
 
         // Push a filler into the vector
@@ -110,16 +121,9 @@ impl LemonParser {
             if let Some(&FormatItem::Filler(_)) = v.last() {
                 v.pop();
             } else {
-                v.push(FormatItem::Filler(Filler {
-                    bg: bg.borrow().clone(),
-                    ol: if *oline.borrow() { Some(ol.borrow().clone()) }
-                        else { None },
-                    ul: if *uline.borrow() { Some(ul.borrow().clone()) }
-                        else { None },
-                    ol_size,
-                    ul_size,
-                    cmd: butts.borrow().clone(),
-                }));
+                v.push(FormatItem::Filler(
+                    get_bg()
+                ));
             }
         };
 
@@ -154,8 +158,8 @@ impl LemonParser {
                         // We check if the last item isn't already a filler
                         // and make sure not to push a filler onto the last
                         // block
-                        match *v[i].last().unwrap() {
-                            FormatItem::Filler(_) => {}
+                        match v[i].last() {
+                            Some(&FormatItem::Filler(_)) => {}
 
                             _ => if i != 2 {
                                 pushf(&mut v[i]);
@@ -247,6 +251,10 @@ impl LemonParser {
                         '-' => { false }
                         _   => { panic!("") }
                     };
+                }
+
+                'I' => {
+                    // Not yet implemented
                 }
 
                 _ => {}

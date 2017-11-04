@@ -215,14 +215,12 @@ impl XCB {
         self.set_pos(curr_x as u16, ypos as u16);
 
         change_property(&self.conn,
-                             PROP_MODE_REPLACE as u8,
-                             self.win,
-                             self.get_atom("_NET_WM_STRUT_PARTIAL"),
-                             ATOM_ATOM,
-                             16,
-                             &data)
-             .request_check()
-             .unwrap();
+                        PROP_MODE_REPLACE as u8,
+                        self.win,
+                        self.get_atom("_NET_WM_STRUT_PARTIAL"),
+                        ATOM_ATOM,
+                        16,
+                        &data);
 
         self.map_window();
     }
@@ -262,14 +260,13 @@ impl XCB {
         // Update the pixmap to match new size
         free_pixmap(&self.conn, self.bufpix);
         create_pixmap(&self.conn, self.depth, self.bufpix,
-                      self.root, w, h);
+                      self.win, w, h);
 
         // Clear the new pixmap
         change_gc(&*self.conn, self.gc, &[(GC_FUNCTION, GX_CLEAR)]);
         copy_area(&*self.conn, self.bufpix, self.bufpix, self.gc,
                   0, 0, 0, 0, w, h);
-        change_gc_checked(&*self.conn, self.gc, &[(GC_FUNCTION, GX_COPY)])
-            .request_check().unwrap();
+        change_gc(&*self.conn, self.gc, &[(GC_FUNCTION, GX_COPY)]);
 
         // Set the size
         configure_window(&*self.conn, self.win, &[

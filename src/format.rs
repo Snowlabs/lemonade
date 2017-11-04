@@ -56,20 +56,7 @@ impl Colour {
 }
 
 #[derive(Clone)]
-pub struct Text {
-    pub bg: Colour,
-    pub fg: Colour,
-    pub ol: Option<Colour>,
-    pub ul: Option<Colour>,
-    pub ol_size: f64,
-    pub ul_size: f64,
-    pub cmd: Vec<(u8, String)>, // mbutton, cmd
-    pub text: String,
-    pub font: String,
-}
-
-#[derive(Clone)]
-pub struct Filler {
+pub struct BG {
     pub bg: Colour,
     pub ol: Option<Colour>,
     pub ul: Option<Colour>,
@@ -79,7 +66,14 @@ pub struct Filler {
 }
 
 #[derive(Clone)]
+pub struct Text {
+    pub fg: Colour,
+    pub text: String,
+    pub font: String,
+}
+
+#[derive(Clone)]
 pub enum FormatItem {
-    Text(Text),
-    Filler(Filler),
+    Text(Text, BG),
+    Filler(BG),
 }
