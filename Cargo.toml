@@ -13,10 +13,16 @@ cairo-rs = { version = "^0", features = ["xcb"] }
 pango = "^0"
 pangocairo = "^0"
 xcb = { version = "^0", features = ["thread"] }
+gdk = { version = "^0", optional = true }
+gdk-pixbuf = { version = "^0", optional = true }
 
 # bin deps
 regex = "^0"
 clap = "^2"
+
+[features]
+default = ["image"]
+image = ["gdk", "gdk-pixbuf"]
 
 [profile.release]
 lto = false

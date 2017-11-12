@@ -2,7 +2,7 @@ use std;
 use std::cell::RefCell;
 use std::str::FromStr;
 use regex::Regex;
-use lemonade::format::{FormatItem, Text, BG, Color};
+use lemonade::format::{FormatItem, Image, Text, BG, Color};
 
 pub struct LemonParser {
     pub bg: Color,
@@ -24,7 +24,7 @@ impl LemonParser {
                 "[!-+\\-]", "(?P<attr>[uo])", "|",
                 "T", "(?P<index>-|[1-9])", "|",
                 "A", "(?:(?P<butt>[1-9])?:(?P<cmd>(?:[^:]|\\\\:)+?):)?", "|",
-                "I", ":(?P<img>.+?)", "|",
+                "I", "(?P<height>\\d+):(?P<path>.+?)", "|",
                 "R",
             r")\}",
             )
@@ -95,15 +95,15 @@ impl LemonParser {
             }
         };
 
+        let checkf = |v: &mut Vec<FormatItem>| {
+            if let Some(&FormatItem::Filler(_)) = v.last() {
+                v.pop();
+            }
+        };
+
         // Push s into the vector
         let pusht = |v: &mut Vec<FormatItem>, s: &str| {
-            if ! s.is_empty() {
-                if let Some(&FormatItem::Filler(_)) = v.last() {
-                    v.pop();
-                }
-            } else {
-                return
-            }
+            checkf(v);
 
             v.push(FormatItem::Text(
                 Text {
@@ -118,22 +118,10 @@ impl LemonParser {
 
         // Push a filler into the vector
         let pushf = |v: &mut Vec<FormatItem>| {
-            if let Some(&FormatItem::Filler(_)) = v.last() {
-                v.pop();
-            } else {
-                v.push(FormatItem::Filler(
-                    get_bg()
-                ));
-            }
+            checkf(v);
+            v.push(FormatItem::Filler(get_bg()));
         };
 
-        let swapc = || {
-            // Since fg and bg are wrapped in a RefCell, mem::swap
-            // cannot be used. This is an alternative.
-            unsafe {
-                std::ptr::swap(fg.as_ptr(), bg.as_ptr());
-            }
-        };
 
         // Iterate through every formatting item
         for mat in self.re.find_iter(fmt) {
@@ -171,7 +159,11 @@ impl LemonParser {
                 }
 
                 'R' => {
-                    swapc();
+                    // Since fg and bg are wrapped in a RefCell, mem::swap
+                    // cannot be used. This is an alternative.
+                    unsafe {
+                        std::ptr::swap(fg.as_ptr(), bg.as_ptr());
+                    }
                 }
 
                 'F'|'B'|'U'|'u' => {
@@ -253,8 +245,25 @@ impl LemonParser {
                     };
                 }
 
+                #[cfg(feature = "image")]
                 'I' => {
-                    // Not yet implemented
+                    let path = &caps["path"];
+                    let height = i32::from_str(&caps["height"]).unwrap();
+                    let img = Image::from_file(path, -1, height);
+
+                    match img {
+                        Ok(img) => {
+                            checkf(&mut v[i]);
+                            v[i].push(FormatItem::Image(
+                                img,
+                                get_bg(),
+                            ));
+                        }
+
+                        Err(_) => {
+                            std::process::exit(2);
+                        }
+                    }
                 }
 
                 _ => {}

@@ -13,6 +13,9 @@ use cairo::XCBSurface;
 use pango::LayoutExt;
 use pangocairo::CairoContextExt;
 
+#[cfg(feature = "image")]
+use gdk::ContextExt;
+
 pub struct Bar<T: Dock> {
     window: T,
     surface: cairo::Surface,
@@ -137,7 +140,6 @@ impl<T: Dock> Bar<T> {
         self.fmt = f;
     }
 
-    // TODO: remove the insane repetition
     pub fn draw(&self) {
 
 
@@ -209,6 +211,25 @@ impl<T: Dock> Bar<T> {
                     pos += w as f64;
                 }
 
+                #[cfg(feature = "image")]
+                format::FormatItem::Image(ref i, ref bg) => {
+                    let w = i.width as f64;
+                    let h = i.height as f64;
+                    let h_off = (bh - i.height) as f64 / 2.0;
+
+                    draw_bg(bg, pos, w);
+
+                    cr.save(); {
+                        cr.set_source_pixbuf(i.pixbuf(), 0.0, h_off);
+                        cr.rectangle(0.0, h_off, w, h);
+                        cr.set_operator(cairo::Operator::Over);
+                        cr.fill();
+                    } cr.restore();
+
+                    cr.translate(w, 0.0);
+                    pos += w;
+                }
+
                 format::FormatItem::Filler(ref bg) => {
                     n += 1;
                     let mut pnext = (inter * n as f64) - pos;
@@ -258,6 +279,11 @@ impl<T: Dock> Bar<T> {
 
                     let (w, _) = lay.get_pixel_size();
                     n += w as f64;
+                }
+
+                #[cfg(feature = "image")]
+                format::FormatItem::Image(ref i, _) => {
+                    n += i.width as f64;
                 }
 
                 format::FormatItem::Filler(_) => {

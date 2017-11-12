@@ -1,3 +1,6 @@
+#[cfg(feature = "image")]
+use gdk_pixbuf::Pixbuf;
+
 // Fucking fight me
 pub type Color = Colour;
 
@@ -72,8 +75,63 @@ pub struct Text {
     pub font: String,
 }
 
+#[cfg(feature = "image")]
+#[derive(Clone)]
+pub struct Image {
+    pub path: String,
+    pub width: i32,
+    pub height: i32,
+    img: Pixbuf,
+}
+
+//#[cfg(feature = "image")]
+//static ref IMG_CACHE = {
+    //let m: HashMap<String, Pixbuf> = HashMap::new();
+    //RwLock::new(m)
+//}
+
+#[cfg(feature = "image")]
+impl Image {
+
+    /// Create `Image` from path, with width and height.
+    ///
+    /// If the width is negative, then the width is automatically adjusted
+    /// according to height to preserver aspect ratio, and vice versa for
+    /// the height.
+    ///
+    /// If the file fails to load, an error is printed to stderr and an
+    /// emtpy image with a size of 0 is returned.
+    pub fn from_file(path: &str, w: i32, h: i32) -> Result<Self, ()> {
+        let img = match Pixbuf::new_from_file_at_size(path, w, h) {
+            Ok(img) => img,
+            Err(e)  => {
+                eprintln!("{}", e);
+                return Err(());
+            }
+        };
+
+        let path   = String::from(path);
+        let width  = img.get_width();
+        let height = img.get_height();
+
+        Ok(Self {
+            path,
+            width,
+            height,
+            img,
+        })
+    }
+
+    pub fn pixbuf(&self) -> &Pixbuf {
+        &self.img
+    }
+}
+
 #[derive(Clone)]
 pub enum FormatItem {
     Text(Text, BG),
     Filler(BG),
+
+    #[cfg(feature = "image")]
+    Image(Image, BG),
 }
