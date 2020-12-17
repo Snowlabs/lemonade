@@ -123,7 +123,7 @@ impl XCB {
                       &values)
             .request_check().unwrap();
 
-		let title = "lemonade";
+       let title = "lemonade";
         change_property(&*x.conn, xcb::PROP_MODE_REPLACE as u8, x.win, 
             xcb::ATOM_WM_NAME, xcb::ATOM_STRING, 8, title.as_bytes());
 
